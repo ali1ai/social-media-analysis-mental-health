@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install
+        run: python -m pip install -e ".[dev]"
+      - name: Lint
+        run: ruff check src tests scripts
+      - name: Unit + integration tests
+        run: python -m pytest -q
+      - name: Training CLI smoke run
+        run: |
+          python scripts/make_synthetic_fixture.py data/synthetic_fixture.csv --n 4000
+          smm-train --data data/synthetic_fixture.csv --fast --out-dir /tmp/models --report-dir /tmp/reports
+          smm-predict --model /tmp/models/socialmediamind_bundle.joblib "my heart is racing and I can't stop worrying"
+      - name: Execute notebook end to end
+        if: matrix.python-version == '3.12'
+        working-directory: notebooks
+        env:
+          SMM_FAST: "1"
+          SMM_TRANSFORMER: "0"
+          SMM_DATA_PATH: ../data/synthetic_fixture.csv
+        run: >
+          jupyter nbconvert --to notebook --execute SocialMediaMind.ipynb
+          --output /tmp/executed.ipynb --ExecutePreprocessor.timeout=1200
+      - name: Execute notebook standalone (as in Colab - no repo, embedded package)
+        if: matrix.python-version == '3.12'
+        env:
+          SMM_FAST: "1"
+          SMM_TRANSFORMER: "0"
+        run: |
+          mkdir -p /tmp/standalone
+          cp notebooks/SocialMediaMind.ipynb /tmp/standalone/
+          cp data/synthetic_fixture.csv "/tmp/standalone/Combined Data.csv"
+          pip uninstall -y socialmediamind
+          cd /tmp/standalone
+          jupyter nbconvert --to notebook --execute SocialMediaMind.ipynb \
+            --output executed.ipynb --ExecutePreprocessor.timeout=1200
+          grep -q "loaded from embedded copy" executed.ipynb

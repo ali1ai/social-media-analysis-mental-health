@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "socialmediamind"
+version = "0.2.0"
+description = "Interpretable, calibrated, uncertainty-aware detection of mental-health signals in social-media text (research/portfolio project, not a clinical tool)."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.26",
+  "pandas>=2.1",
+  "scipy>=1.11",
+  "scikit-learn>=1.4",
+  "xgboost>=2.0",
+  "shap>=0.45",
+  "matplotlib>=3.8",
+  "joblib>=1.3",
+]
+
+[project.optional-dependencies]
+data = ["kagglehub>=0.3"]
+transformer = ["torch>=2.2", "transformers>=4.40"]
+dev = ["pytest>=8", "ruff>=0.5", "nbconvert>=7", "ipykernel>=6", "jupyter>=1.0"]
+
+[project.scripts]
+smm-train = "socialmediamind.train:main"
+smm-predict = "socialmediamind.inference:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
